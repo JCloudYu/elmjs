@@ -45,7 +45,12 @@
 	ELM_JS_ENDPOINT.DOM = (selector)=>{
 		const matches = selector.match(_HTML_TAG);
 		if ( matches === null ) {
-			return document.querySelectorAll(selector);
+			if ( selector.substring(0, 3) === "~* " ) {
+				return document.querySelectorAll(selector.substring(3));
+			}
+			else {
+				return document.querySelector(selector);
+			}
 		}
 		
 		return document.createElement(matches[1]);
