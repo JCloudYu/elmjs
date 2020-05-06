@@ -1,0 +1,24 @@
+{
+	"name": "whelm-js",
+	"version": "0.9.5",
+	"description": "A tiny web supportive module system",
+	"main": "whelmjs.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/JCloudYu/elmjs.git"
+	},
+	"keywords": [
+		"WhelmJS",
+		"HTML",
+		"DOM"
+	],
+	"author": "JCloudYu",
+	"license": "ISC",
+	"bugs": {
+		"url": "https://github.com/JCloudYu/elmjs/issues"
+	},
+	"homepage": "https://github.com/JCloudYu/elmjs#readme"
+}
