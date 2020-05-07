@@ -305,11 +305,19 @@
 		}
 		return proxy;
 	}
-	function ___DISPATCH_EVENT(proxy, ...args) {
+	function ___DISPATCH_EVENT(proxy, event) {
 		const {element} = _PRIVATES.get(this);
 		if ( !element ) return proxy;
 		
-		element.dispatchEvent(...args);
+		if ( typeof event === "string" ) {
+			event = new Event(event);
+		}
+		
+		if ( !(event instanceof Event) ) {
+			throw new TypeError("Argument 1 must be a string or an Event instance!");
+		}
+		
+		element.dispatchEvent(event);
 		return proxy;
 	}
 })();
