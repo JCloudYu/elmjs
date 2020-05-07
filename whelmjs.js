@@ -6,7 +6,7 @@
 	"use strict";
 	
 	const _HTML_TAG = /^<([^<>]+)>$/;
-	const _EVENT_FORMAT = /^([a-zA-Z0-9\-_]+)(,[a-zA-Z0-9\-_]+)*(::([a-zA-Z0-9\-_]+))?$/;
+	const _EVENT_FORMAT = /^([a-zA-Z0-9\-_]+::[a-zA-Z0-9\-_]+)(,([a-zA-Z0-9\-_]+::[a-zA-Z0-9\-_]+))?$/;
 	const _PRIVATES		= new WeakMap();
 	const _EVENT_MAP	= new WeakMap();
 	const _CONTROLLERS	= new Map();
@@ -40,7 +40,17 @@
 		}
 	};
 	const ELM_JS_ENDPOINT = (...args)=>{
-		return new Proxy(new ElmAccessor(...args), ElmAccessorProxyHandler);
+		const inst = new ElmAccessor(...args);
+		const proxy = new Proxy(inst, ElmAccessorProxyHandler);
+		Object.assign(_PRIVATES.get(inst), {
+			proxy,
+			func_bind:ElmAccessor.prototype.bind.bind(inst),
+			func_relink:ElmAccessor.prototype.relink.bind(inst),
+			func_bind_event:___ADD_EVENT_LISTENER.bind(inst, proxy),
+			func_unbind_event:___REMOVE_EVENT_LISTENER.bind(inst, proxy),
+			func_emit_event:___DISPATCH_EVENT.bind(inst, proxy)
+		});
+		return proxy;
 	};
 	ELM_JS_ENDPOINT.DOM = (selector)=>{
 		const matches = selector.match(_HTML_TAG);
@@ -72,12 +82,7 @@
 	class ElmAccessor {
 		constructor(element=null) {
 			const _PRIVATE = Object.assign(Object.create(null), {
-				element:null, exported:Object.create(null),
-				func_bind: ElmAccessor.prototype.bind.bind(this),
-				func_relink: ElmAccessor.prototype.relink.bind(this),
-				func_bind_event: ___ADD_EVENT_LISTENER.bind(this),
-				func_unbind_event: ___REMOVE_EVENT_LISTENER.bind(this),
-				func_emit_event: ___DISPATCH_EVENT.bind(this)
+				element:null, exported:Object.create(null)
 			});
 			_PRIVATES.set(this, _PRIVATE);
 			
@@ -198,7 +203,7 @@
 				
 				const event_pairs = event_descriptor.split(',');
 				for(const event_pair of event_pairs) {
-					let [source_event, dest_event] = event_descriptor.split('::');
+					let [source_event, dest_event] = event_pair.split('::');
 					if ( dest_event === '' ) {
 						dest_event = source_event;
 					}
@@ -242,7 +247,7 @@
 				
 				const event_pairs = event_descriptor.split(',');
 				for(const event_pair of event_pairs) {
-					let [source_event, dest_event] = event_descriptor.split('::');
+					let [source_event, dest_event] = event_pair.split('::');
 					if ( dest_event === '' ) {
 						dest_event = source_event;
 					}
@@ -280,31 +285,31 @@
 			__RESOLVE_ACCESSOR(exports, root_element, elm);
 		}
 	}
-	function ___ADD_EVENT_LISTENER(events, listener, ...args) {
+	function ___ADD_EVENT_LISTENER(proxy, events, listener, ...args) {
 		const {element} = _PRIVATES.get(this);
-		if ( !element ) return;
+		if ( !element ) return proxy;
 		
 		const event_names = events.split(',');
 		for(const event of event_names) {
 			element.addEventListener(event, listener, ...args);
 		}
-		return this;
+		return proxy;
 	}
-	function ___REMOVE_EVENT_LISTENER(events, listener, ...args) {
+	function ___REMOVE_EVENT_LISTENER(proxy, events, listener, ...args) {
 		const {element} = _PRIVATES.get(this);
-		if ( !element ) return;
+		if ( !element ) return proxy;
 		
 		const event_names = events.split(',');
 		for(const event of event_names) {
 			element.removeEventListener(event, listener, ...args);
 		}
-		return this;
+		return proxy;
 	}
-	function ___DISPATCH_EVENT(...args) {
+	function ___DISPATCH_EVENT(proxy, ...args) {
 		const {element} = _PRIVATES.get(this);
-		if ( !element ) return;
+		if ( !element ) return proxy;
 		
 		element.dispatchEvent(...args);
-		return this;
+		return proxy;
 	}
 })();
