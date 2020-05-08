@@ -149,7 +149,7 @@
 	}
 	function __RESOLVE_ACCESSOR(exports, root_element, element) {
 		const candidates = [];
-		for (const item of element.children) {
+		for (const item of Array.prototype.slice.call(element.children, 0)) {
 			if ( !item.hasAttribute('elm-export') ) {
 				candidates.push(item);
 				continue;
