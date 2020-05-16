@@ -107,7 +107,7 @@
 			_PRIVATE.exported = Object.create(null);
 			
 			const {element, exported} = _PRIVATE;
-			__RESOLVE_ACCESSOR(exported, element, element);
+			__PARSE_ELEMENT(exported, element, element);
 		}
 	}
 	class ElmTemplate {
@@ -147,7 +147,7 @@
 			return ELM_JS_ENDPOINT(this._tmpl_elm.cloneNode(true));
 		}
 	}
-	function __RESOLVE_ACCESSOR(exports, root_element, element) {
+	function __PARSE_ELEMENT(exports, root_element, element) {
 		const candidates = [];
 		for (const item of Array.prototype.slice.call(element.children, 0)) {
 			if ( !item.hasAttribute('elm-export') ) {
@@ -156,31 +156,8 @@
 			}
 			
 			const export_name = item.getAttribute('elm-export');
-			if ( item.hasAttribute('elm-export-tmpl') ) {
-				exports[export_name] = new ElmTemplate(item);
-				continue;
-			}
-			
-			if ( item.hasAttribute('elm-export-accessor') ) {
-				exports[export_name] = ELM_JS_ENDPOINT(item);
-				continue;
-			}
-			
-			if ( item.hasAttribute('elm-export-inst') ) {
-				const inst = item.getAttribute('elm-export-inst').trim();
-				if ( !inst || inst === "accessor" ) {
-					exports[export_name] = ELM_JS_ENDPOINT(item);
-					continue;
-				}
-				
-				const controller = _CONTROLLERS.get(inst);
-				if ( !controller ) {
-					throw new TypeError(`Destination controller '${inst}' is not registered yet!`);
-				}
-				
-				exports[export_name] = new controller(item);
-				continue;
-			}
+			const controller = __MAP_CONTROLLER(item);
+			exports[export_name] = controller||item;
 			
 			
 			
@@ -229,7 +206,6 @@
 					ITEM_EVENT_MAP.set(event_pair, event_dispatcher)
 				}
 			}
-			
 			if ( item.hasAttribute('elm-bind-event-bubble') ) {
 				let ITEM_EVENT_MAP = _EVENT_MAP.get(item);
 				if ( !ITEM_EVENT_MAP ) {
@@ -273,18 +249,50 @@
 					ITEM_EVENT_MAP.set(event_pair, event_dispatcher)
 				}
 			}
-			
 			if ( item.hasAttribute('elm-detached') ) {
 				item.remove();
 			}
-			candidates.push(item);
-			exports[export_name] = item;
+			
+			if ( !controller ) {
+				candidates.push(item);
+			}
 		}
 		
 		for(const elm of candidates) {
-			__RESOLVE_ACCESSOR(exports, root_element, elm);
+			__PARSE_ELEMENT(exports, root_element, elm);
 		}
 	}
+	function __MAP_CONTROLLER(item) {
+		if ( item.hasAttribute('elm-export-inst') ) {
+			const inst = item.getAttribute('elm-export-inst').trim();
+			if ( !inst || inst === "accessor" ) {
+				return ELM_JS_ENDPOINT(item);
+			}
+			
+			if ( inst === "template" ) {
+				return new ElmTemplate(item);
+			}
+			
+			const controller = _CONTROLLERS.get(inst);
+			if ( !controller ) {
+				throw new TypeError(`Destination controller '${inst}' is not registered yet!`);
+			}
+			
+			return new controller(item);
+		}
+		
+		if ( item.hasAttribute('elm-export-tmpl') ) {
+			return new ElmTemplate(item);
+		}
+		
+		if ( item.hasAttribute('elm-export-accessor') ) {
+			return ELM_JS_ENDPOINT(item);
+		}
+		
+		return false;
+	}
+	
+	
 	function ___ADD_EVENT_LISTENER(proxy, events, listener, ...args) {
 		const {element} = _PRIVATES.get(this);
 		if ( !element ) return proxy;
