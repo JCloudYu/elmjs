@@ -65,13 +65,18 @@
 		
 		return document.createElement(matches[1]);
 	};
-	ELM_JS_ENDPOINT.controller = (name, controller)=>{
+	ELM_JS_ENDPOINT.controller = (name, controller, is_constructor=true)=>{
 		if ( typeof controller !== "function" ) {
 			throw new TypeError( "Argument 2 must be a constructor!" );
 		}
 		
 		name = (''+(name||'')).trim();
-		_CONTROLLERS.set(name, controller);
+		
+		const info = Object.create(null);
+		info.controller = controller;
+		info.construct = !!is_constructor;
+		
+		_CONTROLLERS.set(name, info);
 	};
 	window.WhelmJS = Object.freeze(ELM_JS_ENDPOINT);
 	
@@ -273,12 +278,13 @@
 				return new ElmTemplate(item);
 			}
 			
-			const controller = _CONTROLLERS.get(inst);
-			if ( !controller ) {
+			const info = _CONTROLLERS.get(inst);
+			if ( !info ) {
 				throw new TypeError(`Destination controller '${inst}' is not registered yet!`);
 			}
 			
-			return new controller(item);
+			const {controller, construct} = info;
+			return construct ? new controller(item) : controller(item);
 		}
 		
 		if ( item.hasAttribute('elm-export-tmpl') ) {
