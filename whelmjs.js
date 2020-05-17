@@ -155,117 +155,126 @@
 	function __PARSE_ELEMENT(exports, root_element, element) {
 		const candidates = [];
 		for (const item of Array.prototype.slice.call(element.children, 0)) {
-			if ( !item.hasAttribute('elm-export') ) {
-				candidates.push(item);
-				continue;
-			}
-			
-			const export_name = item.getAttribute('elm-export');
-			const controller = __MAP_CONTROLLER(item);
-			exports[export_name] = controller||item;
-			
-			
-			
-			// Normal element with event
-			if ( item.hasAttribute('elm-bind-event') ) {
-				let ITEM_EVENT_MAP = _EVENT_MAP.get(item);
-				if ( !ITEM_EVENT_MAP ) {
-					ITEM_EVENT_MAP = new Map();
-					_EVENT_MAP.set(item, ITEM_EVENT_MAP);
+			const controller_exported = __PARSE_EXPORT(exports, root_element, item);
+			if ( !controller_exported ) {
+				if ( item instanceof HTMLTemplateElement ) {
+					candidates.push(item.content);
 				}
-				
-				
-				const event_descriptor = item.getAttribute('elm-bind-event').trim();
-				const matches = _EVENT_FORMAT.test(event_descriptor);
-				if ( !matches ) {
-					throw new SyntaxError(`Incorrect event '${event_descriptor}' in 'elm-bind-event' tag`);
+				else {
+					candidates.push(item);
 				}
-				
-				
-				
-				const event_pairs = event_descriptor.split(',');
-				for(const event_pair of event_pairs) {
-					let [source_event, dest_event] = event_pair.split('::');
-					if ( dest_event === '' ) {
-						dest_event = source_event;
-					}
-					
-					const prev_handler = ITEM_EVENT_MAP.get(event_pair);
-					if ( prev_handler ) {
-						item.removeEventListener(source_event, prev_handler);
-						ITEM_EVENT_MAP.delete(event_pair);
-					}
-					
-					
-					
-					
-					const event_dispatcher = (e)=>{
-						const event = new Event(dest_event, {bubbles:true});
-						Object.defineProperties(event, {
-							original_event: {value:e, configurable:false, enumerable:true, writable:false}
-						});
-						root_element.dispatchEvent(event);
-					};
-					
-					item.addEventListener(source_event, event_dispatcher);
-					ITEM_EVENT_MAP.set(event_pair, event_dispatcher)
-				}
-			}
-			if ( item.hasAttribute('elm-bind-event-bubble') ) {
-				let ITEM_EVENT_MAP = _EVENT_MAP.get(item);
-				if ( !ITEM_EVENT_MAP ) {
-					ITEM_EVENT_MAP = new Map();
-					_EVENT_MAP.set(item, ITEM_EVENT_MAP);
-				}
-				
-				
-			
-				const event_descriptor = item.getAttribute('elm-bind-event-bubble').trim();
-				const matches = _EVENT_FORMAT.test(event_descriptor);
-				if ( !matches ) {
-					throw new SyntaxError(`Incorrect event '${event_descriptor}' in 'elm-bind-event-bubble' tag`);
-				}
-				
-				const event_pairs = event_descriptor.split(',');
-				for(const event_pair of event_pairs) {
-					let [source_event, dest_event] = event_pair.split('::');
-					if ( dest_event === '' ) {
-						dest_event = source_event;
-					}
-					
-					const prev_handler = ITEM_EVENT_MAP.get(event_pair);
-					if ( prev_handler ) {
-						item.removeEventListener(source_event, prev_handler);
-						ITEM_EVENT_MAP.delete(event_pair);
-					}
-					
-					
-					
-					
-					const event_dispatcher = (e)=>{
-						const event = new Event(dest_event, {bubbles:true});
-						Object.defineProperties(event, {
-							original_event: {value:e, configurable:false, enumerable:true, writable:false}
-						});
-						root_element.dispatchEvent(event);
-					};
-					
-					item.addEventListener(source_event, event_dispatcher);
-					ITEM_EVENT_MAP.set(event_pair, event_dispatcher)
-				}
-			}
-			if ( item.hasAttribute('elm-detached') ) {
-				item.remove();
-			}
-			
-			if ( !controller ) {
-				candidates.push(item);
 			}
 		}
 		
 		for(const elm of candidates) {
 			__PARSE_ELEMENT(exports, root_element, elm);
 		}
+	}
+	function __PARSE_EXPORT(exports, root_element, item) {
+		if ( !item.hasAttribute('elm-export') ) {
+			return false;
+		}
+		
+		const export_name = item.getAttribute('elm-export');
+		const controller = __MAP_CONTROLLER(item);
+		exports[export_name] = controller||item;
+		
+		
+		
+		// Normal element with event
+		if ( item.hasAttribute('elm-bind-event') ) {
+			let ITEM_EVENT_MAP = _EVENT_MAP.get(item);
+			if ( !ITEM_EVENT_MAP ) {
+				ITEM_EVENT_MAP = new Map();
+				_EVENT_MAP.set(item, ITEM_EVENT_MAP);
+			}
+			
+			
+			const event_descriptor = item.getAttribute('elm-bind-event').trim();
+			const matches = _EVENT_FORMAT.test(event_descriptor);
+			if ( !matches ) {
+				throw new SyntaxError(`Incorrect event '${event_descriptor}' in 'elm-bind-event' tag`);
+			}
+			
+			
+			
+			const event_pairs = event_descriptor.split(',');
+			for(const event_pair of event_pairs) {
+				let [source_event, dest_event] = event_pair.split('::');
+				if ( dest_event === '' ) {
+					dest_event = source_event;
+				}
+				
+				const prev_handler = ITEM_EVENT_MAP.get(event_pair);
+				if ( prev_handler ) {
+					item.removeEventListener(source_event, prev_handler);
+					ITEM_EVENT_MAP.delete(event_pair);
+				}
+				
+				
+				
+				
+				const event_dispatcher = (e)=>{
+					const event = new Event(dest_event, {bubbles:true});
+					Object.defineProperties(event, {
+						original_event: {value:e, configurable:false, enumerable:true, writable:false}
+					});
+					root_element.dispatchEvent(event);
+				};
+				
+				item.addEventListener(source_event, event_dispatcher);
+				ITEM_EVENT_MAP.set(event_pair, event_dispatcher)
+			}
+		}
+		if ( item.hasAttribute('elm-bind-event-bubble') ) {
+			let ITEM_EVENT_MAP = _EVENT_MAP.get(item);
+			if ( !ITEM_EVENT_MAP ) {
+				ITEM_EVENT_MAP = new Map();
+				_EVENT_MAP.set(item, ITEM_EVENT_MAP);
+			}
+			
+			
+		
+			const event_descriptor = item.getAttribute('elm-bind-event-bubble').trim();
+			const matches = _EVENT_FORMAT.test(event_descriptor);
+			if ( !matches ) {
+				throw new SyntaxError(`Incorrect event '${event_descriptor}' in 'elm-bind-event-bubble' tag`);
+			}
+			
+			const event_pairs = event_descriptor.split(',');
+			for(const event_pair of event_pairs) {
+				let [source_event, dest_event] = event_pair.split('::');
+				if ( dest_event === '' ) {
+					dest_event = source_event;
+				}
+				
+				const prev_handler = ITEM_EVENT_MAP.get(event_pair);
+				if ( prev_handler ) {
+					item.removeEventListener(source_event, prev_handler);
+					ITEM_EVENT_MAP.delete(event_pair);
+				}
+				
+				
+				
+				
+				const event_dispatcher = (e)=>{
+					const event = new Event(dest_event, {bubbles:true});
+					Object.defineProperties(event, {
+						original_event: {value:e, configurable:false, enumerable:true, writable:false}
+					});
+					root_element.dispatchEvent(event);
+				};
+				
+				item.addEventListener(source_event, event_dispatcher);
+				ITEM_EVENT_MAP.set(event_pair, event_dispatcher)
+			}
+		}
+		if ( item.hasAttribute('elm-detached') ) {
+			item.remove();
+		}
+		
+		
+		return !!controller;
 	}
 	function __MAP_CONTROLLER(item) {
 		if ( item.hasAttribute('elm-export-inst') ) {
