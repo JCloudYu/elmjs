@@ -155,7 +155,9 @@
 	function __PARSE_ELEMENT(exports, root_element, element) {
 		const candidates = [];
 		for (const item of Array.prototype.slice.call(element.children, 0)) {
-			const controller_exported = __PARSE_EXPORT(exports, root_element, item);
+			__PARSE_ELM_ATTRIBUTES(root_element, item);
+			
+			const controller_exported = __PARSE_ELM_EXPORTS(exports, root_element, item);
 			if ( !controller_exported ) {
 				if ( item instanceof HTMLTemplateElement ) {
 					candidates.push(item.content);
@@ -170,17 +172,53 @@
 			__PARSE_ELEMENT(exports, root_element, elm);
 		}
 	}
-	function __PARSE_EXPORT(exports, root_element, item) {
+	function __PARSE_ELM_EXPORTS(exports, root_element, item) {
 		if ( !item.hasAttribute('elm-export') ) {
 			return false;
 		}
 		
+		if ( item.hasAttribute('elm-detached') ) {
+			item.remove();
+		}
+		
+		
+		
 		const export_name = item.getAttribute('elm-export');
-		const controller = __MAP_CONTROLLER(item);
+		let controller = null;
+		if ( item.hasAttribute('elm-export-inst') ) {
+			const inst = item.getAttribute('elm-export-inst').trim();
+			if ( !inst || inst === "accessor" ) {
+				controller = ELM_JS_ENDPOINT(item);
+			}
+			else
+			if ( inst === "template" ) {
+				controller = new ElmTemplate(item);
+			}
+			else {
+				const info = _CONTROLLERS.get(inst);
+				if ( !info ) {
+					throw new TypeError(`Destination controller '${inst}' is not registered yet!`);
+				}
+				
+				const {controller:_controller, construct} = info;
+				controller = construct ? new _controller(item) : _controller(item);
+			}
+		}
+		else
+		if ( item.hasAttribute('elm-export-tmpl') ) {
+			controller = new ElmTemplate(item);
+		}
+		else
+		if ( item.hasAttribute('elm-export-accessor') ) {
+			controller = ELM_JS_ENDPOINT(item);
+		}
+		
+		
+		
 		exports[export_name] = controller||item;
-		
-		
-		
+		return !!controller;
+	}
+	function __PARSE_ELM_ATTRIBUTES(root_element, item) {
 		// Normal element with event
 		if ( item.hasAttribute('elm-bind-event') ) {
 			let ITEM_EVENT_MAP = _EVENT_MAP.get(item);
@@ -269,42 +307,6 @@
 				ITEM_EVENT_MAP.set(event_pair, event_dispatcher)
 			}
 		}
-		if ( item.hasAttribute('elm-detached') ) {
-			item.remove();
-		}
-		
-		
-		return !!controller;
-	}
-	function __MAP_CONTROLLER(item) {
-		if ( item.hasAttribute('elm-export-inst') ) {
-			const inst = item.getAttribute('elm-export-inst').trim();
-			if ( !inst || inst === "accessor" ) {
-				return ELM_JS_ENDPOINT(item);
-			}
-			
-			if ( inst === "template" ) {
-				return new ElmTemplate(item);
-			}
-			
-			const info = _CONTROLLERS.get(inst);
-			if ( !info ) {
-				throw new TypeError(`Destination controller '${inst}' is not registered yet!`);
-			}
-			
-			const {controller, construct} = info;
-			return construct ? new controller(item) : controller(item);
-		}
-		
-		if ( item.hasAttribute('elm-export-tmpl') ) {
-			return new ElmTemplate(item);
-		}
-		
-		if ( item.hasAttribute('elm-export-accessor') ) {
-			return ELM_JS_ENDPOINT(item);
-		}
-		
-		return false;
 	}
 	
 	
