@@ -6,7 +6,7 @@
 	"use strict";
 	
 	const _HTML_TAG = /^<([^<>]+)>$/;
-	const _EVENT_FORMAT = /^([a-zA-Z0-9\-_]+::[a-zA-Z0-9\-_]+)(,([a-zA-Z0-9\-_]+::[a-zA-Z0-9\-_]+))?$/;
+	const _EVENT_FORMAT = /^([a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+)(,([a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+))?$/;
 	const _PRIVATES		= new WeakMap();
 	const _EVENT_MAP	= new WeakMap();
 	const _CONTROLLERS	= new Map();
@@ -238,7 +238,10 @@
 			
 			const event_pairs = event_descriptor.split(',');
 			for(const event_pair of event_pairs) {
-				let [source_event, dest_event] = event_pair.split('::');
+				let [_source_event, _dest_event] = event_pair.split('::');
+				let source_event 	= _source_event.trim();
+				let dest_event 		= _dest_event.trim();
+
 				if ( dest_event === '' ) {
 					dest_event = source_event;
 				}
@@ -281,7 +284,10 @@
 			
 			const event_pairs = event_descriptor.split(',');
 			for(const event_pair of event_pairs) {
-				let [source_event, dest_event] = event_pair.split('::');
+				let [_source_event, _dest_event] = event_pair.split('::');
+				let source_event 	= _source_event.trim();
+				let dest_event 		= _dest_event.trim();
+
 				if ( dest_event === '' ) {
 					dest_event = source_event;
 				}
