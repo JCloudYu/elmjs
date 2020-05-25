@@ -5,11 +5,14 @@
 (()=>{
 	"use strict";
 	
-	const _HTML_TAG = /^<([^<>]+)>$/;
-	const _EVENT_FORMAT = /^([a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+)(,([a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+))?$/;
+	const _VERSION		= "1.0.10";
+	const _HTML_TAG		= /^<([^<>]+)>$/;
+	const _EVENT_FORMAT = /^((bubble::)?[a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+)(,([a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+))?$/;
 	const _PRIVATES		= new WeakMap();
 	const _EVENT_MAP	= new WeakMap();
+	const _INST_MAP		= new WeakMap();
 	const _CONTROLLERS	= new Map();
+	
 	
 	const ElmAccessorProxyHandler = {
 		getPrototypeOf: function(obj) {
@@ -39,8 +42,8 @@
 			return true;
 		}
 	};
-	const ELM_JS_ENDPOINT = (...args)=>{
-		const inst = new ElmAccessor(...args);
+	const ELM_JS_ENDPOINT = (html_element)=>{
+		const inst = new ElmAccessor(html_element);
 		const proxy = new Proxy(inst, ElmAccessorProxyHandler);
 		Object.assign(_PRIVATES.get(inst), {
 			proxy,
@@ -50,8 +53,11 @@
 			func_unbind_event:___REMOVE_EVENT_LISTENER.bind(inst, proxy),
 			func_emit_event:___DISPATCH_EVENT.bind(inst, proxy)
 		});
+		
+		_INST_MAP.set(html_element, proxy);
 		return proxy;
 	};
+	ELM_JS_ENDPOINT.Version = _VERSION;
 	ELM_JS_ENDPOINT.DOM = (selector)=>{
 		const matches = selector.match(_HTML_TAG);
 		if ( matches === null ) {
@@ -65,7 +71,7 @@
 		
 		return document.createElement(matches[1]);
 	};
-	ELM_JS_ENDPOINT.controller = (name, controller, is_constructor=true)=>{
+	ELM_JS_ENDPOINT.DefineBlueprint = ELM_JS_ENDPOINT.controller = (name, controller, is_constructor=true)=>{
 		if ( typeof controller !== "function" ) {
 			throw new TypeError( "Argument 2 must be a constructor!" );
 		}
@@ -77,6 +83,9 @@
 		info.construct = !!is_constructor;
 		
 		_CONTROLLERS.set(name, info);
+	};
+	ELM_JS_ENDPOINT.GetInstance = (element)=>{
+		return _INST_MAP.get(element)||null;
 	};
 	window.WhelmJS = Object.freeze(ELM_JS_ENDPOINT);
 	
@@ -216,11 +225,21 @@
 		
 		
 		exports[export_name] = controller||item;
-		return !!controller;
+		if ( !controller ) {
+			exports[export_name] = item;
+			return false;
+		}
+		
+		
+		
+		_INST_MAP.set(item, exports[export_name] = controller);
+		return true;
 	}
 	function __PARSE_ELM_ATTRIBUTES(root_element, item) {
 		// Normal element with event
-		if ( item.hasAttribute('elm-bind-event') ) {
+		const bind_event  = item.hasAttribute('elm-bind-event');
+		const bind_bubble_event = item.hasAttribute('elm-bind-event-bubble');
+		if ( bind_event || bind_bubble_event ) {
 			let ITEM_EVENT_MAP = _EVENT_MAP.get(item);
 			if ( !ITEM_EVENT_MAP ) {
 				ITEM_EVENT_MAP = new Map();
@@ -228,7 +247,7 @@
 			}
 			
 			
-			const event_descriptor = item.getAttribute('elm-bind-event').trim();
+			const event_descriptor = item.getAttribute(bind_bubble_event ? 'elm-bind-event-bubble' : 'elm-bind-event').trim();
 			const matches = _EVENT_FORMAT.test(event_descriptor);
 			if ( !matches ) {
 				throw new SyntaxError(`Incorrect event '${event_descriptor}' in 'elm-bind-event' tag`);
@@ -236,9 +255,13 @@
 			
 			
 			
-			const event_pairs = event_descriptor.split(',');
-			for(const event_pair of event_pairs) {
-				let [_source_event, _dest_event] = event_pair.split('::');
+			const event_tuples = event_descriptor.split(',');
+			for(const event_tuple of event_tuples) {
+				const event_spec = event_tuple.split('::');
+				let bubble_specifier=null, _source_event, _dest_event;
+				event_spec.length === 2 ? ([_source_event, _dest_event]=event_spec) : ([bubble_specifier, _source_event, _dest_event]=event_spec);
+				
+				const should_bubble	= bind_bubble_event||(!!bubble_specifier);
 				let source_event 	= _source_event.trim();
 				let dest_event 		= _dest_event.trim();
 
@@ -246,71 +269,30 @@
 					dest_event = source_event;
 				}
 				
-				const prev_handler = ITEM_EVENT_MAP.get(event_pair);
+				const event_identifier = `${source_event}::${dest_event}`;
+				const prev_handler = ITEM_EVENT_MAP.get(event_identifier);
 				if ( prev_handler ) {
 					item.removeEventListener(source_event, prev_handler);
-					ITEM_EVENT_MAP.delete(event_pair);
+					ITEM_EVENT_MAP.delete(event_identifier);
 				}
 				
 				
 				
 				
 				const event_dispatcher = (e)=>{
-					const event = new Event(dest_event, {bubbles:true});
+					const event = new Event(dest_event, {bubbles:should_bubble});
 					Object.defineProperties(event, {
-						original_event: {value:e, configurable:false, enumerable:true, writable:false}
+						original: {value:e, configurable:false, enumerable:true, writable:false},
+						original_event: {get:()=>{
+							console.error("original_event property is deprecated and will be removed soon! Please use original instead!");
+							return event.original;
+						}, configurable:false, enumerable:true},
 					});
 					root_element.dispatchEvent(event);
 				};
 				
 				item.addEventListener(source_event, event_dispatcher);
-				ITEM_EVENT_MAP.set(event_pair, event_dispatcher)
-			}
-		}
-		if ( item.hasAttribute('elm-bind-event-bubble') ) {
-			let ITEM_EVENT_MAP = _EVENT_MAP.get(item);
-			if ( !ITEM_EVENT_MAP ) {
-				ITEM_EVENT_MAP = new Map();
-				_EVENT_MAP.set(item, ITEM_EVENT_MAP);
-			}
-			
-			
-		
-			const event_descriptor = item.getAttribute('elm-bind-event-bubble').trim();
-			const matches = _EVENT_FORMAT.test(event_descriptor);
-			if ( !matches ) {
-				throw new SyntaxError(`Incorrect event '${event_descriptor}' in 'elm-bind-event-bubble' tag`);
-			}
-			
-			const event_pairs = event_descriptor.split(',');
-			for(const event_pair of event_pairs) {
-				let [_source_event, _dest_event] = event_pair.split('::');
-				let source_event 	= _source_event.trim();
-				let dest_event 		= _dest_event.trim();
-
-				if ( dest_event === '' ) {
-					dest_event = source_event;
-				}
-				
-				const prev_handler = ITEM_EVENT_MAP.get(event_pair);
-				if ( prev_handler ) {
-					item.removeEventListener(source_event, prev_handler);
-					ITEM_EVENT_MAP.delete(event_pair);
-				}
-				
-				
-				
-				
-				const event_dispatcher = (e)=>{
-					const event = new Event(dest_event, {bubbles:true});
-					Object.defineProperties(event, {
-						original_event: {value:e, configurable:false, enumerable:true, writable:false}
-					});
-					root_element.dispatchEvent(event);
-				};
-				
-				item.addEventListener(source_event, event_dispatcher);
-				ITEM_EVENT_MAP.set(event_pair, event_dispatcher)
+				ITEM_EVENT_MAP.set(event_identifier, event_dispatcher)
 			}
 		}
 	}

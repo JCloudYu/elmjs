@@ -1,6 +1,6 @@
 {
 	"name": "whelm-js",
-	"version": "1.0.6",
+	"version": "1.0.10",
 	"description": "A tiny web supportive module system",
 	"main": "whelmjs.js",
 	"scripts": {
