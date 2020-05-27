@@ -5,8 +5,8 @@
 (()=>{
 	"use strict";
 	
-	const _VERSION		= "1.0.10";
-	const _HTML_TAG		= /^<([^<>]+)>$/;
+	const _VERSION		= "1.0.11";
+	const _HTML_SYNTAX	= /^<.*>$/;
 	const _EVENT_FORMAT = /^((bubble::)?[a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+)(,([a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+))?$/;
 	const _PRIVATES		= new WeakMap();
 	const _EVENT_MAP	= new WeakMap();
@@ -58,9 +58,8 @@
 		return proxy;
 	};
 	ELM_JS_ENDPOINT.Version = _VERSION;
-	ELM_JS_ENDPOINT.DOM = (selector)=>{
-		const matches = selector.match(_HTML_TAG);
-		if ( matches === null ) {
+	ELM_JS_ENDPOINT.DOM = (selector, strip_tags='script,style')=>{
+		if ( !_HTML_SYNTAX.test(selector) ) {
 			if ( selector.substring(0, 3) === "~* " ) {
 				return document.querySelectorAll(selector.substring(3));
 			}
@@ -69,7 +68,23 @@
 			}
 		}
 		
-		return document.createElement(matches[1]);
+		if ( selector === "<script>" ) {
+			return document.createElement('script');
+		}
+		
+		
+		
+		const fake_doc = document.implementation.createHTMLDocument(document.title||'');
+		fake_doc.body.innerHTML = selector;
+		
+		const stripped_tags = strip_tags.split(',');
+		for(const tag of stripped_tags) {
+			const elements = fake_doc.body.querySelectorAll(tag);
+			for(const element of elements) element.remove();
+		}
+		
+		const children = Array.prototype.slice.call(fake_doc.body.children, 0);
+		return children.length < 2 ? (children[0]||null) : children;
 	};
 	ELM_JS_ENDPOINT.DefineBlueprint = ELM_JS_ENDPOINT.controller = (name, controller, is_constructor=true)=>{
 		if ( typeof controller !== "function" ) {
