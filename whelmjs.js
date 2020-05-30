@@ -6,7 +6,6 @@
 	"use strict";
 	
 	const _VERSION		= "1.0.11";
-	const _HTML_SYNTAX	= /^<.*>$/;
 	const _EVENT_FORMAT = /^((bubble::)?[a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+)(,([a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+))?$/;
 	const _PRIVATES		= new WeakMap();
 	const _EVENT_MAP	= new WeakMap();
@@ -58,8 +57,9 @@
 		return proxy;
 	};
 	ELM_JS_ENDPOINT.Version = _VERSION;
-	ELM_JS_ENDPOINT.DOM = (selector, strip_tags='script,style')=>{
-		if ( !_HTML_SYNTAX.test(selector) ) {
+	ELM_JS_ENDPOINT.DOM = (selector, strip_tags='script')=>{
+		const IS_HTML_SYNTAX = (selector[0]==="<" && selector[selector.length-1]===">");
+		if ( !IS_HTML_SYNTAX ) {
 			if ( selector.substring(0, 3) === "~* " ) {
 				return document.querySelectorAll(selector.substring(3));
 			}
