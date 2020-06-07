@@ -6,7 +6,7 @@
 	"use strict";
 	
 	const _VERSION		= "1.0.11";
-	const _EVENT_FORMAT = /^((bubble::)?[a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+)(,([a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+))?$/;
+	const _EVENT_FORMAT = /^((bubble::)?[a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+)(,([a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+))*$/;
 	const _PRIVATES		= new WeakMap();
 	const _EVENT_MAP	= new WeakMap();
 	const _INST_MAP		= new WeakMap();
