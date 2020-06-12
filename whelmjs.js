@@ -207,7 +207,7 @@
 	}
 	function __PARSE_ELM_EXPORTS(exports, root_element, item) {
 		if ( !item.hasAttribute('elm-export') ) {
-			return false;
+			return null;
 		}
 		
 		if ( item.hasAttribute('elm-detached') ) {
@@ -307,7 +307,7 @@
 					const event = new Event(dest_event, {bubbles:should_bubble});
 					Object.defineProperties(event, {
 						original: {value:e, configurable:false, enumerable:true, writable:false},
-						instance: related_instance||item,
+						instance: {value:related_instance||item, configurable:false, enumerable:true, writable:false},
 						original_event: {get:()=>{
 							console.error("original_event property is deprecated and will be removed soon! Please use original instead!");
 							return event.original;
