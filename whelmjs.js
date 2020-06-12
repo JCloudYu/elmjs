@@ -86,7 +86,7 @@
 		const children = Array.prototype.slice.call(fake_doc.body.children, 0);
 		return children.length < 2 ? (children[0]||null) : children;
 	};
-	ELM_JS_ENDPOINT.DefineBlueprint = ELM_JS_ENDPOINT.controller = (name, controller, is_constructor=true)=>{
+	ELM_JS_ENDPOINT.BindInst = (name, controller, is_constructor=true)=>{
 		if ( typeof controller !== "function" ) {
 			throw new TypeError( "Argument 2 must be a constructor!" );
 		}
@@ -99,6 +99,15 @@
 		
 		_CONTROLLERS.set(name, info);
 	};
+	ELM_JS_ENDPOINT.controller = (name, controller, is_constructor=true)=>{
+		console.warn("WhelmJS.controller is marked as deprecated! Please use WhelmJS.BindInst instead!");
+		return ELM_JS_ENDPOINT.BindInst(...Array.prototype.slice.call(arguments, 0));
+	};
+	ELM_JS_ENDPOINT.DefineBlueprint = (name, controller, is_constructor=true)=>{
+		console.warn("WhelmJS.DefineBlueprint is marked as deprecated! Please use WhelmJS.BindInst instead!");
+		return ELM_JS_ENDPOINT.BindInst(...Array.prototype.slice.call(arguments, 0));
+	};
+	
 	ELM_JS_ENDPOINT.GetInstance = (element)=>{
 		return _INST_MAP.get(element)||null;
 	};
@@ -179,10 +188,8 @@
 	function __PARSE_ELEMENT(exports, root_element, element) {
 		const candidates = [];
 		for (const item of Array.prototype.slice.call(element.children, 0)) {
-			__PARSE_ELM_ATTRIBUTES(root_element, item);
-			
-			const controller_exported = __PARSE_ELM_EXPORTS(exports, root_element, item);
-			if ( !controller_exported ) {
+			const exported = __PARSE_ELM_EXPORTS(exports, root_element, item);
+			if ( exported === null ) {
 				if ( item instanceof HTMLTemplateElement ) {
 					candidates.push(item.content);
 				}
@@ -190,6 +197,8 @@
 					candidates.push(item);
 				}
 			}
+			
+			__PARSE_ELM_ATTRIBUTES(root_element, item, exported);
 		}
 		
 		for(const elm of candidates) {
@@ -242,15 +251,15 @@
 		exports[export_name] = controller||item;
 		if ( !controller ) {
 			exports[export_name] = item;
-			return false;
+			return null;
 		}
 		
 		
 		
 		_INST_MAP.set(item, exports[export_name] = controller);
-		return true;
+		return controller;
 	}
-	function __PARSE_ELM_ATTRIBUTES(root_element, item) {
+	function __PARSE_ELM_ATTRIBUTES(root_element, item, related_instance) {
 		// Normal element with event
 		const bind_event  = item.hasAttribute('elm-bind-event');
 		const bind_bubble_event = item.hasAttribute('elm-bind-event-bubble');
@@ -298,6 +307,7 @@
 					const event = new Event(dest_event, {bubbles:should_bubble});
 					Object.defineProperties(event, {
 						original: {value:e, configurable:false, enumerable:true, writable:false},
+						instance: related_instance||item,
 						original_event: {get:()=>{
 							console.error("original_event property is deprecated and will be removed soon! Please use original instead!");
 							return event.original;
