@@ -5,9 +5,9 @@
 (()=>{
 	"use strict";
 	
-	const _VERSION		= "1.0.11";
+	const _VERSION		= "1.2.0";
 	const _EVENT_FORMAT = /^((bubble::)?[a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+)(,([a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+))*$/;
-	const _MAP_TEXT_FORMAT = /^([a-zA-Z0-9\-_]+(::[a-zA-Z0-9\-_]+)?)(,([a-zA-Z0-9\-_]+(::[a-zA-Z0-9\-_]+)?))*$/;
+	const _MAP_TEXT_FORMAT = /^([a-zA-Z0-9\-_#.]+(::[a-zA-Z0-9\-_]+)?)(,([a-zA-Z0-9\-_#.]+(::[a-zA-Z0-9\-_]+)?))*$/;
 	const _PRIVATES		= new WeakMap();
 	const _EVENT_MAP	= new WeakMap();
 	const _INST_MAP		= new WeakMap();
@@ -43,19 +43,28 @@
 		}
 	};
 	const ELM_JS_ENDPOINT = (html_element)=>{
-		const inst = new ElmAccessor(html_element);
-		const proxy = new Proxy(inst, ElmAccessorProxyHandler);
-		Object.assign(_PRIVATES.get(inst), {
-			proxy,
-			func_bind:ElmAccessor.prototype.bind.bind(inst),
-			func_relink:ElmAccessor.prototype.relink.bind(inst),
-			func_bind_event:___ADD_EVENT_LISTENER.bind(inst, proxy),
-			func_unbind_event:___REMOVE_EVENT_LISTENER.bind(inst, proxy),
-			func_emit_event:___DISPATCH_EVENT.bind(inst, proxy)
-		});
+		if ( !(html_element instanceof Element) ) {
+			throw new TypeError( "Given item must be an Element instance!" );
+		}
 		
-		_INST_MAP.set(html_element, proxy);
-		return proxy;
+		
+		let controller;
+		const [inst, cast_inst] = ___PARSE_EXPORTED_INST(html_element);
+		if ( inst === "" || inst === "accessor" ) {
+			controller = ___ACCESSOR_COMPONENT(html_element);
+		}
+		else
+		if ( inst === "template" ) {
+			controller = new ElmTemplate(html_element, cast_inst);
+		}
+		else {
+			controller = ___INSTANTIATE_CONTROLLER(inst, html_element);
+		}
+		
+		
+		
+		_INST_MAP.set(html_element, controller);
+		return controller;
 	};
 	ELM_JS_ENDPOINT.Version = _VERSION;
 	ELM_JS_ENDPOINT.DOM = (selector, strip_tags='script')=>{
@@ -100,7 +109,7 @@
 		
 		_CONTROLLERS.set(name, info);
 	};
-	ELM_JS_ENDPOINT.GetInstance = (element)=>{
+	ELM_JS_ENDPOINT.GetInst = ELM_JS_ENDPOINT.GetInstance = (element)=>{
 		return _INST_MAP.get(element)||null;
 	};
 	
@@ -177,7 +186,21 @@
 	
 	
 	
-	
+	function ___ACCESSOR_COMPONENT(html_element) {
+		const inst  = new ElmAccessor(html_element);
+		const proxy = new Proxy(inst, ElmAccessorProxyHandler);
+		Object.assign(_PRIVATES.get(inst), {
+			proxy,
+			func_bind:ElmAccessor.prototype.bind.bind(inst),
+			func_relink:ElmAccessor.prototype.relink.bind(inst),
+			func_bind_event:___ADD_EVENT_LISTENER.bind(inst, proxy),
+			func_unbind_event:___REMOVE_EVENT_LISTENER.bind(inst, proxy),
+			func_emit_event:___DISPATCH_EVENT.bind(inst, proxy)
+		});
+		
+		_INST_MAP.set(html_element, proxy);
+		return proxy;
+	}
 	class ElmAccessor {
 		constructor(element=null) {
 			const _PRIVATE = Object.assign(Object.create(null), {
@@ -210,7 +233,7 @@
 		}
 	}
 	class ElmTemplate {
-		constructor(element) {
+		constructor(element, dst_inst='') {
 			if ( typeof element === "string" ) {
 				var tmp = document.implementation.createHTMLDocument();
 				tmp.body.innerHTML = element;
@@ -235,15 +258,25 @@
 				_tmpl_elm: {
 					configurable:false, writable:false, enumerable:false,
 					value:element
+				},
+				_tmpl_dst_inst: {
+					configurable:false, writable:false, enumerable:false,
+					value: dst_inst || 'accessor'
 				}
 			});
 			
 			element.removeAttribute('elm-export-tmpl');
+			element.removeAttribute('elm-export-inst');
 			element.removeAttribute('elm-export');
 		}
 		get is_template() { return true; }
 		duplicate() {
-			return ELM_JS_ENDPOINT(this._tmpl_elm.cloneNode(true));
+			const {_tmpl_elm:elm, _tmpl_dst_inst:inst} = this;
+			const item = elm.cloneNode(true);
+			const controller = (inst==="accessor")?___ACCESSOR_COMPONENT(item):___INSTANTIATE_CONTROLLER(inst, item);
+			
+			_INST_MAP.set(item, controller);
+			return controller;
 		}
 	}
 	function __PARSE_ELEMENT(exports, root_element, element) {
@@ -278,46 +311,29 @@
 		
 		
 		const export_name = item.getAttribute('elm-export');
-		let controller = null;
-		if ( item.hasAttribute('elm-export-inst') ) {
-			const inst = item.getAttribute('elm-export-inst').trim();
-			if ( !inst || inst === "accessor" ) {
-				controller = ELM_JS_ENDPOINT(item);
-			}
-			else
-			if ( inst === "template" ) {
-				controller = new ElmTemplate(item);
-			}
-			else {
-				const info = _CONTROLLERS.get(inst);
-				if ( !info ) {
-					throw new TypeError(`Destination controller '${inst}' is not registered yet!`);
-				}
-				
-				const {controller:_controller, construct} = info;
-				controller = construct ? new _controller(item) : _controller(item);
-			}
-		}
-		else
-		if ( item.hasAttribute('elm-export-tmpl') ) {
-			controller = new ElmTemplate(item);
-		}
-		else
-		if ( item.hasAttribute('elm-export-accessor') ) {
-			controller = ELM_JS_ENDPOINT(item);
-		}
-		
-		
-		
-		exports[export_name] = controller||item;
-		if ( !controller ) {
+		const [inst, cast_inst] = ___PARSE_EXPORTED_INST(item);
+		if ( inst === "" ) {
 			exports[export_name] = item;
 			return null;
 		}
 		
 		
 		
-		_INST_MAP.set(item, exports[export_name] = controller);
+		let controller;
+		if ( inst === "accessor" ) {
+			controller = ___ACCESSOR_COMPONENT(item);
+		}
+		else
+		if ( inst === "template" ) {
+			controller = new ElmTemplate(item, cast_inst);
+		}
+		else {
+			controller = ___INSTANTIATE_CONTROLLER(inst, item);
+		}
+		
+		
+		
+		_INST_MAP.set(item, exports[export_name]=controller);
 		return controller;
 	}
 	function __PARSE_ELM_ATTRIBUTES(root_element, item, related_instance) {
@@ -408,6 +424,45 @@
 	}
 	
 	
+	
+	function ___PARSE_EXPORTED_INST(html_element) {
+		if ( html_element.hasAttribute('elm-export-inst') ) {
+			const [inst, dst_inst] = html_element.getAttribute('elm-export-inst').trim().split('::');
+			if ( dst_inst !== undefined && inst !== "template" ) {
+				throw new SyntaxError("Instance resolution operator :: is only allowed in template mode!");
+			}
+			
+			if ( !inst || inst === "accessor" ) {
+				return ["accessor"];
+			}
+			else
+			if ( inst === "template" ) {
+				return ["template", dst_inst||null];
+			}
+			else {
+				return [inst];
+			}
+		}
+		else
+		if ( html_element.hasAttribute('elm-export-tmpl') ) {
+			return ["template"];
+		}
+		else
+		if ( html_element.hasAttribute('elm-export-accessor') ) {
+			return ["accessor"];
+		}
+		
+		return [""];
+	}
+	function ___INSTANTIATE_CONTROLLER(inst, item) {
+		const info = _CONTROLLERS.get(inst);
+		if ( !info ) {
+			throw new TypeError(`Destination controller '${inst}' is not registered yet!`);
+		}
+		
+		const {controller:_controller, construct} = info;
+		return construct ? new _controller(item) : _controller(item);
+	}
 	function ___ADD_EVENT_LISTENER(proxy, events, listener, ...args) {
 		const {element} = _PRIVATES.get(this);
 		if ( !element ) return proxy;
