@@ -5,7 +5,7 @@
 (()=>{
 	"use strict";
 	
-	const _VERSION		= "1.2.0";
+	const _VERSION		= "1.2.1";
 	const _EVENT_FORMAT = /^((bubble::)?[a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+)(,([a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+))*$/;
 	const _MAP_TEXT_FORMAT = /^([a-zA-Z0-9\-_#.]+(::[a-zA-Z0-9\-_]+)?)(,([a-zA-Z0-9\-_#.]+(::[a-zA-Z0-9\-_]+)?))*$/;
 	const _PRIVATES		= new WeakMap();
@@ -163,7 +163,7 @@
 			const map = group[i-1];
 			const map_result = (typeof map === "function") ? map(key) : map[key];
 			if ( map_result !== undefined ) {
-				return (''+(map_result||'')).trim();
+				return (''+(map_result||''));
 			}
 		}
 		
@@ -300,20 +300,35 @@
 		}
 	}
 	function __PARSE_ELM_EXPORTS(exports, root_element, item) {
-		if ( !item.hasAttribute('elm-export') ) {
-			return null;
+		const has_export = item.hasAttribute('elm-export');
+		const has_export_inst = item.hasAttribute('elm-export-inst');
+		const has_export_accessor = item.hasAttribute('elm-export-accessor');
+		const has_export_tmpl = item.hasAttribute('elm-export-tmpl');
+		const is_exported = has_export || has_export_inst || has_export_accessor || has_export_tmpl;
+		
+		
+		if ( !is_exported ) { return null; }
+		
+		
+		const export_name = has_export ? (item.getAttribute('elm-export')??'').trim() : false;
+		if ( export_name === "" ) {
+			console.error(item);
+			throw new SyntaxError("[elm-export] attribute's content value should not be empty!");
 		}
 		
-		if ( item.hasAttribute('elm-detached') ) {
+		
+		
+		if ( has_export && item.hasAttribute('elm-detached') ) {
 			item.remove();
 		}
 		
 		
-		
-		const export_name = item.getAttribute('elm-export');
 		const [inst, cast_inst] = ___PARSE_EXPORTED_INST(item);
 		if ( inst === "" ) {
-			exports[export_name] = item;
+			if ( export_name !== false ) {
+				exports[export_name] = item;
+			}
+			
 			return null;
 		}
 		
@@ -333,7 +348,14 @@
 		
 		
 		
-		_INST_MAP.set(item, exports[export_name]=controller);
+		_INST_MAP.set(item, controller);
+		
+		if ( export_name !== false ) {
+			exports[export_name]=controller
+		}
+		
+		
+		
 		return controller;
 	}
 	function __PARSE_ELM_ATTRIBUTES(root_element, item, related_instance) {
@@ -429,6 +451,7 @@
 		if ( html_element.hasAttribute('elm-export-inst') ) {
 			const [inst, dst_inst] = html_element.getAttribute('elm-export-inst').trim().split('::');
 			if ( dst_inst !== undefined && inst !== "template" ) {
+				console.error(html_element);
 				throw new SyntaxError("Instance resolution operator :: is only allowed in template mode!");
 			}
 			
@@ -457,6 +480,7 @@
 	function ___INSTANTIATE_CONTROLLER(inst, item) {
 		const info = _CONTROLLERS.get(inst);
 		if ( !info ) {
+			console.error(item);
 			throw new TypeError(`Destination controller '${inst}' is not registered yet!`);
 		}
 		
