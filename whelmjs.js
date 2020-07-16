@@ -5,7 +5,7 @@
 (()=>{
 	"use strict";
 	
-	const _VERSION		= "1.2.1";
+	const _VERSION		= "1.2.2";
 	const _EVENT_FORMAT = /^((bubble::)?[a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+)(,([a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+))*$/;
 	const _MAP_TEXT_FORMAT = /^([a-zA-Z0-9\-_#.]+(::[a-zA-Z0-9\-_]+)?)(,([a-zA-Z0-9\-_#.]+(::[a-zA-Z0-9\-_]+)?))*$/;
 	const _PRIVATES		= new WeakMap();
@@ -310,7 +310,7 @@
 		if ( !is_exported ) { return null; }
 		
 		
-		const export_name = has_export ? (item.getAttribute('elm-export')??'').trim() : false;
+		const export_name = has_export ? (item.getAttribute('elm-export')||'').trim() : false;
 		if ( export_name === "" ) {
 			console.error(item);
 			throw new SyntaxError("[elm-export] attribute's content value should not be empty!");
