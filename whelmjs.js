@@ -18,7 +18,7 @@
 	
 	// Prepare Core
 	{
-		const _EVENT_FORMAT = /^((bubble::)?[a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+)(,([a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+))*$/;
+		const _EVENT_FORMAT = /^((bubble::)?[a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+)(,(bubble::)?([a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+))*$/;
 		const _MAP_TEXT_FORMAT = /^([a-zA-Z0-9\-_#.]+(::[a-zA-Z0-9\-_]+)?)(,([a-zA-Z0-9\-_#.]+(::[a-zA-Z0-9\-_]+)?))*$/;
 	
 		RUNTIME.IWhelmJS = function(html_element) {
@@ -430,7 +430,7 @@
 			const {element} = PRIVATES.get(this);
 			if ( !element ) return proxy;
 			
-			const event_names = events.split(',');
+			const event_names = events.split(',').map((t)=>t.trim());
 			for(const event of event_names) {
 				element.addEventListener(event, listener, ...args);
 			}
@@ -440,7 +440,7 @@
 			const {element} = PRIVATES.get(this);
 			if ( !element ) return proxy;
 			
-			const event_names = events.split(',');
+			const event_names = events.split(',').map((t)=>t.trim());
 			for(const event of event_names) {
 				element.removeEventListener(event, listener, ...args);
 			}
