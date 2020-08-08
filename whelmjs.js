@@ -21,14 +21,22 @@
 		const _EVENT_FORMAT = /^((bubble::)?[a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+)(,(bubble::)?([a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+))*$/;
 		const _MAP_TEXT_FORMAT = /^([a-zA-Z0-9\-_#.]+(::[a-zA-Z0-9\-_]+)?)(,([a-zA-Z0-9\-_#.]+(::[a-zA-Z0-9\-_]+)?))*$/;
 	
-		RUNTIME.IWhelmJS = function(html_element) {
+		RUNTIME.IWhelmJS = function(html_element, force_inst=null) {
 			if ( !(html_element instanceof Element) ) {
 				throw new TypeError( "Given item must be an Element instance!" );
 			}
 			
 			
-			let controller;
-			const [inst, cast_inst] = ___PARSE_EXPORTED_INST(html_element);
+			let controller, inst, cast_inst;
+			if ( arguments.length > 1 ) {
+				[inst, cast_inst] = ___PARSE_INST_DESCRIPTOR(force_inst);
+			}
+			else {
+				[inst, cast_inst] = ___PARSE_EXPORTED_INST(html_element);
+			}
+			
+			
+			
 			if ( inst === "" || inst === "accessor" ) {
 				controller = ___ACCESSOR_COMPONENT(html_element);
 			}
@@ -386,23 +394,37 @@
 			}
 		}
 
-		function ___PARSE_EXPORTED_INST(html_element) {
-			if ( html_element.hasAttribute('elm-export-inst') ) {
-				const [inst, dst_inst] = html_element.getAttribute('elm-export-inst').trim().split('::');
-				if ( dst_inst !== undefined && inst !== "template" ) {
-					console.error(html_element);
-					throw new SyntaxError("Instance resolution operator :: is only allowed in template mode!");
+		function ___PARSE_INST_DESCRIPTOR(descriptor) {
+			const [inst, dst_inst] = (''+descriptor||'').trim().split('::');
+			if ( dst_inst !== undefined && inst !== "template" ) {
+				throw new SyntaxError("Invalid instance descriptor!");
+			}
+			
+			
+			
+			if ( !inst || inst === "accessor" ) {
+				return ["accessor"];
+			}
+			
+			if ( inst === "template" ) {
+				const inst_desc = ["template"];
+				if ( dst_inst ) {
+					inst_desc.push(dst_inst);
 				}
 				
-				if ( !inst || inst === "accessor" ) {
-					return ["accessor"];
+				return inst_desc;
+			}
+			
+			return [inst];
+		}
+		function ___PARSE_EXPORTED_INST(html_element) {
+			if ( html_element.hasAttribute('elm-export-inst') ) {
+				try {
+					return ___PARSE_INST_DESCRIPTOR(html_element.getAttribute('elm-export-inst'))
 				}
-				else
-				if ( inst === "template" ) {
-					return ["template", dst_inst||null];
-				}
-				else {
-					return [inst];
+				catch(e) {
+					console.error(html_element);
+					throw e;
 				}
 			}
 			else
