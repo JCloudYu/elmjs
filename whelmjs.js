@@ -468,18 +468,31 @@
 			}
 			return proxy;
 		}
-		function ___DISPATCH_EVENT(proxy, event) {
+		function ___DISPATCH_EVENT(proxy, event, inits={}) {
 			const {element} = PRIVATES.get(this);
 			if ( !element ) return proxy;
 			
+			
+			
+			
+			const {bubbles, cancelable, composed, ...event_args} = inits;
 			if ( typeof event === "string" ) {
-				event = new Event(event);
+				event = new Event(event, {
+					bubbles:!!bubbles,
+					cancelable:!!cancelable,
+					composed:!!composed
+				});
 			}
+			
+			
 			
 			if ( !(event instanceof Event) ) {
 				throw new TypeError("Argument 1 must be a string or an Event instance!");
 			}
 			
+			
+			
+			Object.assign(event, event_args);
 			element.dispatchEvent(event);
 			return proxy;
 		}
