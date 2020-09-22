@@ -271,6 +271,10 @@
 				item.remove();
 			}
 			
+			if ( item.matches('input[elm-no-ac][readonly]') ) {
+				item.addEventListener('focus', ___REMOVE_READONLY_ON_FOCUS);
+			}
+			
 			
 			const [inst, cast_inst] = ___PARSE_EXPORTED_INST(item);
 			if ( inst === "" ) {
@@ -495,6 +499,13 @@
 			Object.assign(event, event_args);
 			element.dispatchEvent(event);
 			return proxy;
+		}
+		
+		// INFO: This is a tiny workaround to disable auto complete completely.
+		//		 See also https://www.codementor.io/@leonardofaria/disabling-autofill-in-chrome-zec47xcui
+		function ___REMOVE_READONLY_ON_FOCUS() {
+			this.removeAttribute('readonly');
+			this.removeEventListener('focus', ___REMOVE_READONLY_ON_FOCUS);
 		}
 	}
 	
