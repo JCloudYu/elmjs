@@ -5,7 +5,7 @@
 (()=>{
 	"use strict";
 	
-	const VERSION	= "1.2.2";
+	const VERSION	= "1.4.4";
 	const PRIVATES	= new WeakMap();
 	const EVENT_MAP	= new WeakMap();
 	const INST_MAP	= new WeakMap();
