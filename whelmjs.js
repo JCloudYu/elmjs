@@ -359,12 +359,11 @@
 					const event_dispatcher = (e)=>{
 						const event = new Event(dest_event, {bubbles:should_bubble});
 						Object.defineProperties(event, {
-							original: {value:e, configurable:false, enumerable:true, writable:false},
-							instance: {value:related_instance||item, configurable:false, enumerable:true, writable:false},
-							original_event: {get:()=>{
-								console.error("original_event property is deprecated and will be removed soon! Please use original instead!");
-								return event.original;
-							}, configurable:false, enumerable:true},
+							original: {value:e, enumerable:true},
+							source: {value:Object.freeze({
+								element:item,
+								accessor:INST_MAP.get(root_element)||null
+							}), enumerable:true}
 						});
 						root_element.dispatchEvent(event);
 					};
