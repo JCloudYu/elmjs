@@ -54,6 +54,8 @@
 			return controller;
 		};
 		CORE_MAP.DOM = function DOM(selector, strip_tags='script') {
+			selector = selector.trim();
+			
 			const IS_HTML_SYNTAX = (selector[0]==="<" && selector[selector.length-1]===">");
 			if ( !IS_HTML_SYNTAX ) {
 				if ( selector.substring(0, 3) === "~* " ) {
@@ -70,17 +72,22 @@
 			
 			
 			
-			const fake_doc = document.implementation.createHTMLDocument(document.title||'');
-			fake_doc.body.innerHTML = selector;
+			const {body:fake_body} = document.implementation.createHTMLDocument(document.title||'');
+			fake_body.innerHTML = selector;
+			
+			
+			
+			const frag = new DocumentFragment();
+			while(fake_body.children.length > 0) {
+				frag.appendChild(fake_body.children[0]);
+			}
 			
 			const stripped_tags = strip_tags.split(',');
 			for(const tag of stripped_tags) {
-				const elements = fake_doc.body.querySelectorAll(tag);
-				for(const element of elements) element.remove();
+				for(const element of frag.querySelectorAll(tag)) element.remove();
 			}
 			
-			const children = Array.prototype.slice.call(fake_doc.body.children, 0);
-			return children.length < 2 ? (children[0]||null) : children;
+			return frag.children.length < 2 ? (frag.children[0]||null) : frag;
 		};
 		CORE_MAP.BindInst = function BindInst(name, controller, is_constructor=true) {
 			if ( typeof controller !== "function" ) {
