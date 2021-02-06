@@ -115,33 +115,33 @@
 		
 		
 		const ElmAccessorProxyHandler = {
-		getPrototypeOf: function(obj) {
-			return Object.getPrototypeOf(obj);
-		},
-		get: function(obj, prop) {
-			const {element, exported, func_bind, func_relink, func_bind_event, func_unbind_event, func_emit_event} = PRIVATES.get(obj);
-			if ( prop === 'element' ) return element;
-			if ( prop === 'is_accessor' ) return true;
-			if ( prop === 'bind' ) return func_bind;
-			if ( prop === 'relink' ) return func_relink;
-			if ( prop === 'on' || prop === 'addEventListener' ) return func_bind_event;
-			if ( prop === 'off' || prop === 'removeEventListener' ) return func_unbind_event;
-			if ( prop === 'emit' || prop === 'dispatchEvent' ) return func_emit_event;
-			
-			return exported[prop] || obj[prop];
-		},
-		set: function(obj, prop, value) {
-			if ( prop === "element" ) return false;
-			if ( prop === "bind" ) return false;
-			if ( prop === "relink" ) return false;
-			
-			const {exported} = PRIVATES.get(obj);
-			if ( !exported[prop] ) {
-				obj[prop] = value;
+			getPrototypeOf: function(obj) {
+				return Object.getPrototypeOf(obj);
+			},
+			get: function(obj, prop) {
+				const {element, exported, func_bind, func_relink, func_bind_event, func_unbind_event, func_emit_event} = PRIVATES.get(obj);
+				if ( prop === 'element' ) return element;
+				if ( prop === 'is_accessor' ) return true;
+				if ( prop === 'bind' ) return func_bind;
+				if ( prop === 'relink' ) return func_relink;
+				if ( prop === 'on' || prop === 'addEventListener' ) return func_bind_event;
+				if ( prop === 'off' || prop === 'removeEventListener' ) return func_unbind_event;
+				if ( prop === 'emit' || prop === 'dispatchEvent' ) return func_emit_event;
+				
+				return exported[prop] || obj[prop];
+			},
+			set: function(obj, prop, value) {
+				if ( prop === "element" ) return false;
+				if ( prop === "bind" ) return false;
+				if ( prop === "relink" ) return false;
+				
+				const {exported} = PRIVATES.get(obj);
+				if ( !exported[prop] ) {
+					obj[prop] = value;
+				}
+				return true;
 			}
-			return true;
-		}
-	};
+		};
 		function ___ACCESSOR_COMPONENT(html_element) {
 			const inst  = new ElmAccessor(html_element);
 			const proxy = new Proxy(inst, ElmAccessorProxyHandler);
