@@ -5,14 +5,13 @@
 (()=>{
 	"use strict";
 	
-	const VERSION	= "1.4.4";
+	const CORE_MAP = { Version: "1.4.7" };
+	const EXT_MAP = Object.create(null), RUNTIME = Object.create(null);
+	
 	const PRIVATES	= new WeakMap();
 	const EVENT_MAP	= new WeakMap();
 	const INST_MAP	= new WeakMap();
 	const CTRL_MAP	= new Map();
-	const RUNTIME	= Object.create(null)
-	const EXT_MAP	= Object.create(null);
-	const CORE_MAP	= {Version:VERSION};
 	
 	
 	
@@ -20,8 +19,14 @@
 	{
 		const _EVENT_FORMAT = /^((bubble::)?[a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+)(,(bubble::)?([a-zA-Z0-9\-_ ]+::[a-zA-Z0-9\-_ ]+))*$/;
 		const _MAP_TEXT_FORMAT = /^([a-zA-Z0-9\-_#.]+(::[a-zA-Z0-9\-_]+)?)(,([a-zA-Z0-9\-_#.]+(::[a-zA-Z0-9\-_]+)?))*$/;
-	
+		
 		RUNTIME.IWhelmJS = function(html_element, force_inst=null) {
+			if ( typeof html_element === "string" ) {
+				return CORE_MAP.DOM(...Array.prototype.slice.call(arguments, 0));
+			}
+			
+			
+			
 			if ( !(html_element instanceof Element) ) {
 				throw new TypeError( "Given item must be an Element instance!" );
 			}
@@ -128,7 +133,7 @@
 				if ( prop === 'off' || prop === 'removeEventListener' ) return func_unbind_event;
 				if ( prop === 'emit' || prop === 'dispatchEvent' ) return func_emit_event;
 				
-				return exported[prop] || obj[prop];
+				return exported[prop] || obj[prop] || element[prop];
 			},
 			set: function(obj, prop, value) {
 				if ( prop === "element" ) return false;
@@ -176,7 +181,6 @@
 				
 				const _PRIVATE = PRIVATES.get(this);
 				_PRIVATE.element = element;
-				_PRIVATE.exported = Object.create(null);
 				
 				this.relink();
 			}
@@ -222,6 +226,8 @@
 				});
 				
 				element.removeAttribute('elm-export-tmpl');
+				element.removeAttribute('elm-export-accessor');
+				element.removeAttribute('elm-export-acc');
 				element.removeAttribute('elm-export-inst');
 				element.removeAttribute('elm-export');
 			}
@@ -443,6 +449,10 @@
 			}
 			else
 			if ( html_element.hasAttribute('elm-export-accessor') ) {
+				return ["accessor"];
+			}
+			else
+			if ( html_element.hasAttribute('elm-export-acc') ) {
 				return ["accessor"];
 			}
 			
